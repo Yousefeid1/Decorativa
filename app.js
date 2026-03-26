@@ -1165,6 +1165,7 @@ function saveInventoryProduct() {
   }
   renderInventoryTable();
   closeModal();
+  saveToStorage();
 }
 
 function saveOrder() {
@@ -1180,6 +1181,7 @@ function saveOrder() {
   closeModal();
   showToast('success', 'Order Created', `${id} has been created for ${customer}.`);
   logAudit('Create', 'Sales', `New order ${id} for ${customer}`);
+  saveToStorage();
 }
 
 function saveCustomer() {
@@ -1201,27 +1203,38 @@ function saveCustomer() {
   closeModal();
   showToast('success', 'Customer Added', `${name} has been added to CRM.`);
   logAudit('Create', 'CRM', `New customer: ${name}`);
+  saveToStorage();
 }
 
 function saveInvoice() {
   const customer = document.getElementById('inv-cust').value;
-  const amount = document.getElementById('inv-amount').value;
-  if (!amount) { showToast('error', 'Validation Error', 'Invoice amount is required.'); return; }
+  const baseAmount = parseFloat(document.getElementById('inv-amount').value) || 0;
+  if (!baseAmount) { showToast('error', 'Validation Error', 'Invoice amount is required.'); return; }
+  const tax = parseFloat(document.getElementById('inv-tax').value) || 0;
+  const customs = parseFloat(document.getElementById('inv-customs').value) || 0;
+  const shipping = parseFloat(document.getElementById('inv-ship-cost').value) || 0;
+  const grandTotal = baseAmount + (baseAmount * tax / 100) + customs + shipping;
   const year = new Date().getFullYear();
   const maxInvNum = APP.data.invoices.reduce((max, i) => Math.max(max, parseInt(i.id.split('-').pop(), 10) || 0), 88);
   const id = `INV-${year}-${String(maxInvNum + 1).padStart(3, '0')}`;
   APP.data.invoices.unshift({
     id, customer,
-    amount: '$' + parseFloat(amount).toLocaleString(),
+    amount: '$' + baseAmount.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+    grandTotal: '$' + grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+    tax, customs, shipping,
     currency: document.getElementById('inv-curr').value,
     due: document.getElementById('inv-due').value,
     status: 'Draft',
-    method: document.getElementById('inv-pay-method').value
+    method: document.getElementById('inv-pay-method').value,
+    notes: document.getElementById('inv-notes2').value,
+    ref: document.getElementById('inv-ref').value
   });
   renderInvoices();
+  renderPaymentsSummary();
   closeModal();
-  showToast('success', 'Invoice Created', `${id} for ${customer} has been created.`);
-  logAudit('Create', 'Accounting', `Invoice ${id} for ${customer}`);
+  showToast('success', 'Invoice Created', `${id} for ${customer} — Total: $${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`);
+  logAudit('Create', 'Accounting', `Invoice ${id} for ${customer} — $${grandTotal.toFixed(2)}`);
+  saveToStorage();
 }
 
 function saveEmployee() {
@@ -1297,6 +1310,16 @@ function calcOrderTotal() {
   const qty = parseFloat(document.getElementById('order-qty').value) || 0;
   const price = parseFloat(document.getElementById('order-price').value) || 0;
   document.getElementById('order-total').value = '$' + (qty * price).toLocaleString('en-US', { minimumFractionDigits: 2 });
+}
+
+function calcInvoiceTotal() {
+  const amount = parseFloat(document.getElementById('inv-amount')?.value) || 0;
+  const tax = parseFloat(document.getElementById('inv-tax')?.value) || 0;
+  const customs = parseFloat(document.getElementById('inv-customs')?.value) || 0;
+  const shipping = parseFloat(document.getElementById('inv-ship-cost')?.value) || 0;
+  const total = amount + (amount * tax / 100) + customs + shipping;
+  const el = document.getElementById('inv-total-display');
+  if (el) el.textContent = '$' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // ===== FILTER/SEARCH =====
