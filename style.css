@@ -1940,6 +1940,49 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
+/* ===== SEARCH RESULTS PANEL ===== */
+.search-bar { position: relative; }
+.search-results-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  max-height: 320px;
+  overflow-y: auto;
+  display: none;
+}
+.search-result-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: var(--bg-hover); }
+
+/* ===== RTL SUPPORT ===== */
+[dir="rtl"] .sidebar { left: auto; right: 0; }
+[dir="rtl"] .main-content { margin-left: 0; margin-right: var(--sidebar-w); }
+[dir="rtl"] .main-content.expanded { margin-right: 64px; }
+[dir="rtl"] .sidebar.collapsed { transform: translateX(100%); right: 0; left: auto; }
+[dir="rtl"] .topbar-left { flex-direction: row-reverse; }
+[dir="rtl"] .topbar-right { flex-direction: row-reverse; }
+[dir="rtl"] .nav-item { flex-direction: row-reverse; justify-content: flex-end; }
+[dir="rtl"] .nav-badge { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .sidebar-header { flex-direction: row-reverse; }
+[dir="rtl"] .modal { direction: rtl; }
+[dir="rtl"] .form-grid { direction: rtl; }
+[dir="rtl"] .data-table th, [dir="rtl"] .data-table td { text-align: right; }
+[dir="rtl"] .filter-bar { flex-direction: row-reverse; flex-wrap: wrap; }
+[dir="rtl"] .module-actions { flex-direction: row-reverse; }
+[dir="rtl"] .tab-bar { flex-direction: row-reverse; }
+[dir="rtl"] .kpi-body { text-align: right; }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
   .sidebar { width: 64px; }
@@ -1947,6 +1990,7 @@ body {
   .sidebar .nav-section-label, .sidebar .logo-text,
   .sidebar .user-info { display: none; }
   .main-content { margin-left: 64px; }
+  [dir="rtl"] .main-content { margin-left: 0; margin-right: 64px; }
   .dashboard-grid, .analytics-grid { grid-template-columns: 1fr; }
   .dash-card, .anal-card { grid-column: span 1 !important; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }

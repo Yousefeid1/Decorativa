@@ -32,7 +32,10 @@
       <input type="password" id="login-password" placeholder="••••••••" value="admin123">
     </div>
     <div class="login-roles-hint">
-      <small>Demo: admin@marbleflow.com / admin123</small>
+      <small>Demo accounts:</small><br>
+      <small>👑 admin@marbleflow.com / admin123 (Owner)</small><br>
+      <small>📋 sales@marbleflow.com / sales123 (Dept. Manager)</small><br>
+      <small>👤 emp@marbleflow.com / emp123 (Employee)</small>
     </div>
     <button class="btn-login" onclick="doLogin()">Sign In</button>
     <div class="login-footer">Marble & Granite Export Management System v2.0</div>
@@ -63,44 +66,44 @@
     <nav class="sidebar-nav">
       <div class="nav-section-label">Main</div>
       <a class="nav-item active" onclick="showModule('dashboard')" data-module="dashboard">
-        <span class="nav-icon">⬡</span><span class="nav-label">Dashboard</span>
+        <span class="nav-icon">⬡</span><span class="nav-label" data-i18n="Dashboard">Dashboard</span>
       </a>
 
       <div class="nav-section-label">Operations</div>
       <a class="nav-item" onclick="showModule('inventory')" data-module="inventory">
-        <span class="nav-icon">◧</span><span class="nav-label">Inventory</span>
+        <span class="nav-icon">◧</span><span class="nav-label" data-i18n="Inventory Management">Inventory</span>
         <span class="nav-badge" id="badge-inventory">3</span>
       </a>
       <a class="nav-item" onclick="showModule('sales')" data-module="sales">
-        <span class="nav-icon">◫</span><span class="nav-label">Sales & Export</span>
+        <span class="nav-icon">◫</span><span class="nav-label" data-i18n="Sales & Export">Sales & Export</span>
       </a>
       <a class="nav-item" onclick="showModule('crm')" data-module="crm">
-        <span class="nav-icon">◉</span><span class="nav-label">CRM & Customers</span>
+        <span class="nav-icon">◉</span><span class="nav-label" data-i18n="CRM & Customers">CRM & Customers</span>
       </a>
 
       <div class="nav-section-label">Finance</div>
       <a class="nav-item" onclick="showModule('accounting')" data-module="accounting">
-        <span class="nav-icon">◈</span><span class="nav-label">Accounting</span>
+        <span class="nav-icon">◈</span><span class="nav-label" data-i18n="Accounting">Accounting</span>
         <span class="nav-badge alert" id="badge-accounting">2</span>
       </a>
       <a class="nav-item" onclick="showModule('analytics')" data-module="analytics">
-        <span class="nav-icon">◬</span><span class="nav-label">Analytics</span>
+        <span class="nav-icon">◬</span><span class="nav-label" data-i18n="Analytics">Analytics</span>
       </a>
 
       <div class="nav-section-label">Management</div>
       <a class="nav-item" onclick="showModule('hr')" data-module="hr">
-        <span class="nav-icon">◎</span><span class="nav-label">Human Resources</span>
+        <span class="nav-icon">◎</span><span class="nav-label" data-i18n="Human Resources">Human Resources</span>
       </a>
       <a class="nav-item" onclick="showModule('users')" data-module="users">
-        <span class="nav-icon">◐</span><span class="nav-label">Users & Access</span>
+        <span class="nav-icon">◐</span><span class="nav-label" data-i18n="Users & Access">Users & Access</span>
       </a>
       <a class="nav-item" onclick="showModule('settings')" data-module="settings">
-        <span class="nav-icon">◌</span><span class="nav-label">Settings</span>
+        <span class="nav-icon">◌</span><span class="nav-label" data-i18n="Settings">Settings</span>
       </a>
     </nav>
 
     <div class="sidebar-footer">
-      <button class="btn-logout" onclick="doLogout()">⏻ Sign Out</button>
+      <button class="btn-logout" onclick="doLogout()">⏻ <span data-i18n="Sign Out">Sign Out</span></button>
     </div>
   </aside>
 
@@ -306,8 +309,8 @@
 
       <div id="inv-movements" class="tab-content hidden">
         <div class="filter-bar">
-          <input type="date" class="filter-input" id="mov-from">
-          <input type="date" class="filter-input" id="mov-to">
+          <input type="date" class="filter-input" id="mov-date-from">
+          <input type="date" class="filter-input" id="mov-date-to">
           <button class="btn-secondary" onclick="filterMovements()">Filter</button>
           <button class="btn-primary" onclick="openModal('add-movement')">+ Record Movement</button>
         </div>
@@ -472,7 +475,7 @@
       <div id="acc-invoices" class="tab-content active">
         <div class="filter-bar">
           <input type="text" placeholder="Search invoices..." class="search-input" oninput="filterTable('inv-acc-table', this.value)">
-          <select class="filter-select">
+          <select class="filter-select" onchange="filterByCol('inv-acc-table', 5, this.value)">
             <option value="">All Status</option>
             <option>Draft</option>
             <option>Sent</option>
@@ -858,7 +861,7 @@
   <div class="modal-body">
     <div class="form-grid">
       <div class="form-group"><label>Product *</label>
-        <select id="mov-product"><option>Carrara White Marble</option><option>Black Galaxy Granite</option><option>Emperador Brown</option></select></div>
+        <select id="mov-product"></select></div>
       <div class="form-group"><label>Movement Type</label>
         <select id="mov-type"><option>Inbound (Received)</option><option>Outbound (Sold)</option><option>Transfer</option><option>Adjustment</option><option>Return</option></select></div>
       <div class="form-group"><label>Quantity (m²) *</label><input type="number" id="mov-qty" placeholder="0"></div>
@@ -873,6 +876,23 @@
   <div class="modal-footer">
     <button class="btn-secondary" onclick="closeModal()">Cancel</button>
     <button class="btn-primary" onclick="saveMovement()">Record Movement</button>
+  </div>
+</div>
+
+<!-- Add Warehouse Modal -->
+<div class="modal hidden" id="modal-add-warehouse">
+  <div class="modal-header"><h2>Add Warehouse</h2><button onclick="closeModal()">✕</button></div>
+  <div class="modal-body">
+    <div class="form-grid">
+      <div class="form-group"><label>Warehouse Name *</label><input type="text" id="wh-name" placeholder="e.g. Port Said Storage"></div>
+      <div class="form-group"><label>Location</label><input type="text" id="wh-location" placeholder="City, Area"></div>
+      <div class="form-group"><label>Capacity (m²)</label><input type="number" id="wh-capacity" placeholder="1000"></div>
+      <div class="form-group"><label>Manager</label><input type="text" id="wh-manager" placeholder="Manager name"></div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    <button class="btn-primary" onclick="saveWarehouse()">Add Warehouse</button>
   </div>
 </div>
 
