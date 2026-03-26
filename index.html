@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarbleFlow ERP — Marble & Granite Export Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login-screen" class="login-screen">
+  <div class="login-bg">
+    <div class="login-texture"></div>
+    <div class="login-veins"></div>
+  </div>
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">MarbleFlow</span>
+    </div>
+    <h1 class="login-title">Welcome Back</h1>
+    <p class="login-sub">Sign in to your export management system</p>
+    <div class="form-group">
+      <label>Email Address</label>
+      <input type="email" id="login-email" placeholder="admin@marbleflow.com" value="admin@marbleflow.com">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" value="admin123">
+    </div>
+    <div class="login-roles-hint">
+      <small>Demo: admin@marbleflow.com / admin123</small>
+    </div>
+    <button class="btn-login" onclick="doLogin()">Sign In</button>
+    <div class="login-footer">Marble & Granite Export Management System v2.0</div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="app" class="app hidden">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <span class="logo-icon">◈</span>
+        <span class="logo-text">MarbleFlow</span>
+      </div>
+      <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="user-avatar" id="user-avatar">A</div>
+      <div class="user-info">
+        <div class="user-name" id="user-name">Admin User</div>
+        <div class="user-role" id="user-role">Company Owner</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a class="nav-item active" onclick="showModule('dashboard')" data-module="dashboard">
+        <span class="nav-icon">⬡</span><span class="nav-label">Dashboard</span>
+      </a>
+
+      <div class="nav-section-label">Operations</div>
+      <a class="nav-item" onclick="showModule('inventory')" data-module="inventory">
+        <span class="nav-icon">◧</span><span class="nav-label">Inventory</span>
+        <span class="nav-badge" id="badge-inventory">3</span>
+      </a>
+      <a class="nav-item" onclick="showModule('sales')" data-module="sales">
+        <span class="nav-icon">◫</span><span class="nav-label">Sales & Export</span>
+      </a>
+      <a class="nav-item" onclick="showModule('crm')" data-module="crm">
+        <span class="nav-icon">◉</span><span class="nav-label">CRM & Customers</span>
+      </a>
+
+      <div class="nav-section-label">Finance</div>
+      <a class="nav-item" onclick="showModule('accounting')" data-module="accounting">
+        <span class="nav-icon">◈</span><span class="nav-label">Accounting</span>
+        <span class="nav-badge alert" id="badge-accounting">2</span>
+      </a>
+      <a class="nav-item" onclick="showModule('analytics')" data-module="analytics">
+        <span class="nav-icon">◬</span><span class="nav-label">Analytics</span>
+      </a>
+
+      <div class="nav-section-label">Management</div>
+      <a class="nav-item" onclick="showModule('hr')" data-module="hr">
+        <span class="nav-icon">◎</span><span class="nav-label">Human Resources</span>
+      </a>
+      <a class="nav-item" onclick="showModule('users')" data-module="users">
+        <span class="nav-icon">◐</span><span class="nav-label">Users & Access</span>
+      </a>
+      <a class="nav-item" onclick="showModule('settings')" data-module="settings">
+        <span class="nav-icon">◌</span><span class="nav-label">Settings</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="doLogout()">⏻ Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content" id="main-content">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+        <div class="breadcrumb" id="breadcrumb">Dashboard</div>
+      </div>
+      <div class="topbar-right">
+        <div class="search-bar">
+          <span class="search-icon">⌕</span>
+          <input type="text" placeholder="Search clients, orders, products..." id="global-search" onkeyup="globalSearch(this.value)">
+        </div>
+        <div class="topbar-notif" onclick="toggleNotif()">
+          <span>🔔</span>
+          <span class="notif-dot"></span>
+        </div>
+        <div class="lang-toggle" onclick="toggleLang()">
+          <span id="lang-label">EN</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Notification Panel -->
+    <div class="notif-panel hidden" id="notif-panel">
+      <div class="notif-header">Notifications <button onclick="toggleNotif()">✕</button></div>
+      <div class="notif-list" id="notif-list"></div>
+    </div>
+
+    <!-- ===== MODULES ===== -->
+
+    <!-- DASHBOARD -->
+    <div id="module-dashboard" class="module active">
+      <div class="module-header">
+        <h1>Executive Dashboard</h1>
+        <div class="module-actions">
+          <span class="date-label" id="today-date"></span>
+          <button class="btn-primary" onclick="exportReport()">Export Report</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon">◧</div>
+          <div class="kpi-body">
+            <div class="kpi-value" id="kpi-stock">1,240</div>
+            <div class="kpi-label">Total Stock (m²)</div>
+            <div class="kpi-trend up">↑ 8.2% vs last month</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">◫</div>
+          <div class="kpi-body">
+            <div class="kpi-value" id="kpi-orders">47</div>
+            <div class="kpi-label">Active Orders</div>
+            <div class="kpi-trend up">↑ 12 new this week</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">◈</div>
+          <div class="kpi-body">
+            <div class="kpi-value" id="kpi-revenue">$284,500</div>
+            <div class="kpi-label">Monthly Revenue</div>
+            <div class="kpi-trend up">↑ 15.4% vs target</div>
+          </div>
+        </div>
+        <div class="kpi-card alert-card">
+          <div class="kpi-icon">⚠</div>
+          <div class="kpi-body">
+            <div class="kpi-value" id="kpi-alerts">5</div>
+            <div class="kpi-label">Active Alerts</div>
+            <div class="kpi-trend down">3 low stock · 2 overdue</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">◉</div>
+          <div class="kpi-body">
+            <div class="kpi-value" id="kpi-customers">128</div>
+            <div class="kpi-label">Total Customers</div>
+            <div class="kpi-trend up">↑ 6 new this month</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">◬</div>
+          <div class="kpi-body">
+            <div class="kpi-value" id="kpi-shipments">18</div>
+            <div class="kpi-label">Active Shipments</div>
+            <div class="kpi-trend">5 in transit · 13 preparing</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="dash-card wide">
+          <div class="dash-card-header">
+            <h3>Monthly Revenue Trend</h3>
+            <select class="mini-select" onchange="updateRevenueChart(this.value)">
+              <option value="12">Last 12 Months</option>
+              <option value="6">Last 6 Months</option>
+              <option value="3">Last 3 Months</option>
+            </select>
+          </div>
+          <canvas id="revenue-chart" height="200"></canvas>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card-header"><h3>Stock by Type</h3></div>
+          <canvas id="stock-chart" height="220"></canvas>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card-header"><h3>Order Status</h3></div>
+          <canvas id="order-status-chart" height="220"></canvas>
+        </div>
+
+        <div class="dash-card wide">
+          <div class="dash-card-header"><h3>Recent Activity Log</h3></div>
+          <div class="activity-log" id="activity-log"></div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card-header"><h3>Top Customers</h3></div>
+          <div class="top-list" id="top-customers-list"></div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card-header"><h3>Alerts & Warnings</h3></div>
+          <div class="alerts-list" id="alerts-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVENTORY MODULE -->
+    <div id="module-inventory" class="module hidden">
+      <div class="module-header">
+        <h1>Inventory Management</h1>
+        <div class="module-actions">
+          <button class="btn-secondary" onclick="showTab('inventory','movements')">Stock Movements</button>
+          <button class="btn-primary" onclick="openModal('add-inventory')">+ Add Product</button>
+        </div>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="showTab('inventory','products')" data-tab="inv-products">Products</button>
+        <button class="tab-btn" onclick="showTab('inventory','warehouses')" data-tab="inv-warehouses">Warehouses</button>
+        <button class="tab-btn" onclick="showTab('inventory','movements')" data-tab="inv-movements">Movements</button>
+        <button class="tab-btn" onclick="showTab('inventory','batches')" data-tab="inv-batches">Batches & QR</button>
+      </div>
+
+      <div id="inv-products" class="tab-content active">
+        <div class="filter-bar">
+          <input type="text" placeholder="Search products..." class="search-input" oninput="filterTable('inv-table', this.value)">
+          <select class="filter-select" onchange="filterByCol('inv-table', 1, this.value)">
+            <option value="">All Types</option>
+            <option>Marble</option>
+            <option>Granite</option>
+            <option>Travertine</option>
+            <option>Onyx</option>
+          </select>
+          <select class="filter-select" onchange="filterByCol('inv-table', 4, this.value)">
+            <option value="">All Quality</option>
+            <option>Premium A+</option>
+            <option>Grade A</option>
+            <option>Grade B</option>
+            <option>Grade C</option>
+          </select>
+          <select class="filter-select" onchange="filterByCol('inv-table', 7, this.value)">
+            <option value="">All Usage</option>
+            <option>Export</option>
+            <option>Local</option>
+            <option>Both</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="inv-table">
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th>Type</th>
+                <th>Color</th>
+                <th>Size (cm)</th>
+                <th>Quality</th>
+                <th>Stock (m²)</th>
+                <th>Price/m²</th>
+                <th>Usage</th>
+                <th>Warehouse</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="inv-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="inv-warehouses" class="tab-content hidden">
+        <div class="warehouse-grid" id="warehouse-grid"></div>
+      </div>
+
+      <div id="inv-movements" class="tab-content hidden">
+        <div class="filter-bar">
+          <input type="date" class="filter-input" id="mov-from">
+          <input type="date" class="filter-input" id="mov-to">
+          <button class="btn-secondary" onclick="filterMovements()">Filter</button>
+          <button class="btn-primary" onclick="openModal('add-movement')">+ Record Movement</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="mov-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Product</th>
+                <th>Type</th>
+                <th>Qty (m²)</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Reference</th>
+                <th>User</th>
+              </tr>
+            </thead>
+            <tbody id="mov-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="inv-batches" class="tab-content hidden">
+        <div class="batch-grid" id="batch-grid"></div>
+      </div>
+    </div>
+
+    <!-- SALES & EXPORT MODULE -->
+    <div id="module-sales" class="module hidden">
+      <div class="module-header">
+        <h1>Sales & Export Management</h1>
+        <div class="module-actions">
+          <button class="btn-secondary" onclick="showTab('sales','shipments')">Shipments</button>
+          <button class="btn-primary" onclick="openModal('add-order')">+ New Order</button>
+        </div>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="showTab('sales','orders')" data-tab="sales-orders">Orders</button>
+        <button class="tab-btn" onclick="showTab('sales','shipments')" data-tab="sales-shipments">Shipments</button>
+        <button class="tab-btn" onclick="showTab('sales','contracts')" data-tab="sales-contracts">Contracts</button>
+        <button class="tab-btn" onclick="showTab('sales','pricing')" data-tab="sales-pricing">Pricing Rules</button>
+      </div>
+
+      <div id="sales-orders" class="tab-content active">
+        <div class="filter-bar">
+          <input type="text" placeholder="Search orders..." class="search-input" oninput="filterTable('orders-table', this.value)">
+          <select class="filter-select" onchange="filterByCol('orders-table', 5, this.value)">
+            <option value="">All Status</option>
+            <option>Preparing</option>
+            <option>Shipped</option>
+            <option>Delivered</option>
+            <option>Paid</option>
+            <option>Cancelled</option>
+          </select>
+          <select class="filter-select" onchange="filterByCol('orders-table', 6, this.value)">
+            <option value="">All Type</option>
+            <option>Export</option>
+            <option>Local</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="orders-table">
+            <thead>
+              <tr>
+                <th>Order #</th>
+                <th>Customer</th>
+                <th>Product</th>
+                <th>Qty (m²)</th>
+                <th>Total Value</th>
+                <th>Status</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="orders-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="sales-shipments" class="tab-content hidden">
+        <div class="shipment-tracker" id="shipment-tracker"></div>
+      </div>
+
+      <div id="sales-contracts" class="tab-content hidden">
+        <div class="contracts-list" id="contracts-list"></div>
+      </div>
+
+      <div id="sales-pricing" class="tab-content hidden">
+        <div class="pricing-rules" id="pricing-rules"></div>
+      </div>
+    </div>
+
+    <!-- CRM MODULE -->
+    <div id="module-crm" class="module hidden">
+      <div class="module-header">
+        <h1>CRM & Customer Management</h1>
+        <div class="module-actions">
+          <button class="btn-secondary" onclick="showTab('crm','leads')">Leads Pipeline</button>
+          <button class="btn-primary" onclick="openModal('add-customer')">+ Add Customer</button>
+        </div>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="showTab('crm','customers')" data-tab="crm-customers">Customers</button>
+        <button class="tab-btn" onclick="showTab('crm','leads')" data-tab="crm-leads">Leads</button>
+        <button class="tab-btn" onclick="showTab('crm','complaints')" data-tab="crm-complaints">Complaints</button>
+        <button class="tab-btn" onclick="showTab('crm','loyalty')" data-tab="crm-loyalty">Loyalty Program</button>
+      </div>
+
+      <div id="crm-customers" class="tab-content active">
+        <div class="customer-cards" id="customer-cards"></div>
+      </div>
+
+      <div id="crm-leads" class="tab-content hidden">
+        <div class="kanban-board" id="leads-kanban"></div>
+      </div>
+
+      <div id="crm-complaints" class="tab-content hidden">
+        <div class="table-wrap">
+          <table class="data-table" id="complaints-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Customer</th>
+                <th>Subject</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Assigned To</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="complaints-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="crm-loyalty" class="tab-content hidden">
+        <div class="loyalty-grid" id="loyalty-grid"></div>
+      </div>
+    </div>
+
+    <!-- ACCOUNTING MODULE -->
+    <div id="module-accounting" class="module hidden">
+      <div class="module-header">
+        <h1>Accounting & Finance</h1>
+        <div class="module-actions">
+          <button class="btn-secondary" onclick="showTab('acc','reports')">Financial Reports</button>
+          <button class="btn-primary" onclick="openModal('add-invoice')">+ New Invoice</button>
+        </div>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="showTab('acc','invoices')" data-tab="acc-invoices">Invoices</button>
+        <button class="tab-btn" onclick="showTab('acc','payments')" data-tab="acc-payments">Payments</button>
+        <button class="tab-btn" onclick="showTab('acc','expenses')" data-tab="acc-expenses">Expenses</button>
+        <button class="tab-btn" onclick="showTab('acc','reports')" data-tab="acc-reports">Reports</button>
+      </div>
+
+      <div id="acc-invoices" class="tab-content active">
+        <div class="filter-bar">
+          <input type="text" placeholder="Search invoices..." class="search-input" oninput="filterTable('inv-acc-table', this.value)">
+          <select class="filter-select">
+            <option value="">All Status</option>
+            <option>Draft</option>
+            <option>Sent</option>
+            <option>Paid</option>
+            <option>Overdue</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="inv-acc-table">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Customer</th>
+                <th>Amount</th>
+                <th>Currency</th>
+                <th>Due Date</th>
+                <th>Status</th>
+                <th>Payment Method</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="acc-inv-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="acc-payments" class="tab-content hidden">
+        <div class="payments-summary" id="payments-summary"></div>
+      </div>
+
+      <div id="acc-expenses" class="tab-content hidden">
+        <div class="expenses-grid" id="expenses-grid"></div>
+      </div>
+
+      <div id="acc-reports" class="tab-content hidden">
+        <div class="financial-reports" id="financial-reports"></div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS MODULE -->
+    <div id="module-analytics" class="module hidden">
+      <div class="module-header">
+        <h1>Analytics & Reporting</h1>
+        <div class="module-actions">
+          <button class="btn-secondary" onclick="exportPDF()">Export PDF</button>
+          <button class="btn-primary" onclick="exportExcel()">Export Excel</button>
+        </div>
+      </div>
+
+      <div class="analytics-filters">
+        <select class="filter-select" id="anal-period">
+          <option value="month">This Month</option>
+          <option value="quarter">This Quarter</option>
+          <option value="year">This Year</option>
+        </select>
+        <select class="filter-select" id="anal-product">
+          <option value="">All Products</option>
+          <option>Carrara White Marble</option>
+          <option>Black Galaxy Granite</option>
+          <option>Emperador Brown</option>
+        </select>
+        <select class="filter-select" id="anal-customer">
+          <option value="">All Customers</option>
+        </select>
+        <button class="btn-primary" onclick="refreshAnalytics()">Refresh</button>
+      </div>
+
+      <div class="analytics-grid">
+        <div class="anal-card wide">
+          <h3>Sales Performance by Product</h3>
+          <canvas id="sales-perf-chart" height="200"></canvas>
+        </div>
+        <div class="anal-card">
+          <h3>Revenue by Country</h3>
+          <canvas id="country-chart" height="220"></canvas>
+        </div>
+        <div class="anal-card">
+          <h3>Stock Velocity</h3>
+          <canvas id="velocity-chart" height="220"></canvas>
+        </div>
+        <div class="anal-card wide">
+          <h3>Demand Forecast (Next 6 Months)</h3>
+          <canvas id="forecast-chart" height="200"></canvas>
+        </div>
+        <div class="anal-card">
+          <h3>Employee Performance</h3>
+          <div class="emp-perf-list" id="emp-perf-list"></div>
+        </div>
+        <div class="anal-card">
+          <h3>Top Products</h3>
+          <div class="top-products-list" id="top-products-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HR MODULE -->
+    <div id="module-hr" class="module hidden">
+      <div class="module-header">
+        <h1>Human Resources</h1>
+        <div class="module-actions">
+          <button class="btn-secondary" onclick="showTab('hr','attendance')">Attendance</button>
+          <button class="btn-primary" onclick="openModal('add-employee')">+ Add Employee</button>
+        </div>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="showTab('hr','employees')" data-tab="hr-employees">Employees</button>
+        <button class="tab-btn" onclick="showTab('hr','attendance')" data-tab="hr-attendance">Attendance</button>
+        <button class="tab-btn" onclick="showTab('hr','payroll')" data-tab="hr-payroll">Payroll</button>
+        <button class="tab-btn" onclick="showTab('hr','leaves')" data-tab="hr-leaves">Leaves</button>
+      </div>
+
+      <div id="hr-employees" class="tab-content active">
+        <div class="employee-cards" id="employee-cards"></div>
+      </div>
+
+      <div id="hr-attendance" class="tab-content hidden">
+        <div class="attendance-grid" id="attendance-grid"></div>
+      </div>
+
+      <div id="hr-payroll" class="tab-content hidden">
+        <div class="payroll-table" id="payroll-table"></div>
+      </div>
+
+      <div id="hr-leaves" class="tab-content hidden">
+        <div class="leaves-table" id="leaves-table"></div>
+      </div>
+    </div>
+
+    <!-- USERS MODULE -->
+    <div id="module-users" class="module hidden">
+      <div class="module-header">
+        <h1>Users & Access Control</h1>
+        <div class="module-actions">
+          <button class="btn-secondary" onclick="showTab('users','audit')">Audit Log</button>
+          <button class="btn-primary" onclick="openModal('add-user')">+ Add User</button>
+        </div>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="showTab('users','list')" data-tab="users-list">Users</button>
+        <button class="tab-btn" onclick="showTab('users','roles')" data-tab="users-roles">Roles & Permissions</button>
+        <button class="tab-btn" onclick="showTab('users','audit')" data-tab="users-audit">Audit Log</button>
+      </div>
+
+      <div id="users-list" class="tab-content active">
+        <div class="users-grid" id="users-grid"></div>
+      </div>
+
+      <div id="users-roles" class="tab-content hidden">
+        <div class="roles-grid" id="roles-grid"></div>
+      </div>
+
+      <div id="users-audit" class="tab-content hidden">
+        <div class="table-wrap">
+          <table class="data-table" id="audit-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Module</th>
+                <th>Details</th>
+                <th>IP</th>
+              </tr>
+            </thead>
+            <tbody id="audit-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS MODULE -->
+    <div id="module-settings" class="module hidden">
+      <div class="module-header">
+        <h1>System Settings</h1>
+      </div>
+      <div class="settings-grid">
+        <div class="settings-card">
+          <h3>Company Profile</h3>
+          <div class="form-group"><label>Company Name</label><input type="text" value="MarbleFlow Export Co."></div>
+          <div class="form-group"><label>Country</label><input type="text" value="Egypt"></div>
+          <div class="form-group"><label>Phone</label><input type="text" value="+20 2 1234 5678"></div>
+          <div class="form-group"><label>Email</label><input type="text" value="info@marbleflow.com"></div>
+          <button class="btn-primary">Save Changes</button>
+        </div>
+        <div class="settings-card">
+          <h3>Currency & Exchange</h3>
+          <div class="form-group"><label>Base Currency</label>
+            <select><option>USD</option><option>EUR</option><option>EGP</option></select></div>
+          <div class="form-group"><label>USD → EGP Rate</label><input type="number" value="48.5"></div>
+          <div class="form-group"><label>EUR → USD Rate</label><input type="number" value="1.08"></div>
+          <button class="btn-primary">Update Rates</button>
+        </div>
+        <div class="settings-card">
+          <h3>Notifications</h3>
+          <div class="toggle-row"><span>Low Stock Alerts</span><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+          <div class="toggle-row"><span>Overdue Payments</span><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+          <div class="toggle-row"><span>New Orders</span><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+          <div class="toggle-row"><span>Shipment Updates</span><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
+        </div>
+        <div class="settings-card">
+          <h3>Warehouses</h3>
+          <div id="warehouse-settings"></div>
+          <button class="btn-secondary" onclick="openModal('add-warehouse')">+ Add Warehouse</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ===== MODALS ===== -->
+<div class="modal-overlay hidden" id="modal-overlay" onclick="closeModal()"></div>
+
+<!-- Add Inventory Product Modal -->
+<div class="modal hidden" id="modal-add-inventory">
+  <div class="modal-header"><h2>Add New Product</h2><button onclick="closeModal()">✕</button></div>
+  <div class="modal-body">
+    <div class="form-grid">
+      <div class="form-group"><label>Product Name *</label><input type="text" id="inv-name" placeholder="e.g. Carrara White Marble"></div>
+      <div class="form-group"><label>Type *</label>
+        <select id="inv-type"><option>Marble</option><option>Granite</option><option>Travertine</option><option>Onyx</option><option>Limestone</option></select></div>
+      <div class="form-group"><label>Color</label><input type="text" id="inv-color" placeholder="e.g. White, Black, Beige"></div>
+      <div class="form-group"><label>Size (cm)</label><input type="text" id="inv-size" placeholder="e.g. 60x60, 30x60"></div>
+      <div class="form-group"><label>Quality Grade *</label>
+        <select id="inv-quality"><option>Premium A+</option><option>Grade A</option><option>Grade B</option><option>Grade C</option></select></div>
+      <div class="form-group"><label>Supplier</label><input type="text" id="inv-supplier" placeholder="Supplier name"></div>
+      <div class="form-group"><label>Price per m² (USD) *</label><input type="number" id="inv-price" placeholder="0.00"></div>
+      <div class="form-group"><label>Initial Stock (m²) *</label><input type="number" id="inv-stock" placeholder="0"></div>
+      <div class="form-group"><label>Warehouse *</label>
+        <select id="inv-warehouse"><option>Main Factory</option><option>Cairo Showroom</option><option>Alexandria Store</option><option>External Storage A</option></select></div>
+      <div class="form-group"><label>Usage</label>
+        <select id="inv-usage"><option>Export</option><option>Local</option><option>Both</option></select></div>
+      <div class="form-group"><label>Min. Stock Alert (m²)</label><input type="number" id="inv-min" placeholder="50"></div>
+      <div class="form-group"><label>Country of Origin</label><input type="text" id="inv-origin" placeholder="e.g. Italy, Turkey, Egypt"></div>
+    </div>
+    <div class="form-group full-width"><label>Notes</label><textarea id="inv-notes" placeholder="Any additional notes..."></textarea></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    <button class="btn-primary" onclick="saveInventoryProduct()">Save Product</button>
+  </div>
+</div>
+
+<!-- Add Order Modal -->
+<div class="modal hidden" id="modal-add-order">
+  <div class="modal-header"><h2>New Sales Order</h2><button onclick="closeModal()">✕</button></div>
+  <div class="modal-body">
+    <div class="form-grid">
+      <div class="form-group"><label>Customer *</label>
+        <select id="order-customer"><option>Ahmed Hassan (Egypt)</option><option>Marco Rossi (Italy)</option><option>Sarah Williams (USA)</option><option>Liu Wei (China)</option></select></div>
+      <div class="form-group"><label>Product *</label>
+        <select id="order-product"><option>Carrara White Marble</option><option>Black Galaxy Granite</option><option>Emperador Brown</option><option>Crema Marfil</option></select></div>
+      <div class="form-group"><label>Quantity (m²) *</label><input type="number" id="order-qty" placeholder="0" oninput="calcOrderTotal()"></div>
+      <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="order-price" placeholder="0.00" oninput="calcOrderTotal()"></div>
+      <div class="form-group"><label>Total Value</label><input type="text" id="order-total" placeholder="Auto-calculated" readonly></div>
+      <div class="form-group"><label>Currency</label>
+        <select id="order-currency"><option>USD</option><option>EUR</option><option>EGP</option><option>GBP</option></select></div>
+      <div class="form-group"><label>Order Type</label>
+        <select id="order-type"><option>Export</option><option>Local</option></select></div>
+      <div class="form-group"><label>Shipping Method</label>
+        <select id="order-ship"><option>Sea Freight</option><option>Air Freight</option><option>Land Transport</option><option>Courier</option></select></div>
+      <div class="form-group"><label>Destination Port</label><input type="text" id="order-port" placeholder="e.g. Alexandria, Genoa"></div>
+      <div class="form-group"><label>Expected Delivery</label><input type="date" id="order-delivery"></div>
+      <div class="form-group"><label>Insurance Required</label>
+        <select id="order-insurance"><option>Yes</option><option>No</option></select></div>
+      <div class="form-group"><label>Payment Terms</label>
+        <select id="order-payment-terms"><option>30% Advance, 70% on Delivery</option><option>Full Prepayment</option><option>Net 30</option><option>Net 60</option><option>LC (Letter of Credit)</option></select></div>
+    </div>
+    <div class="form-group full-width"><label>Special Instructions</label><textarea id="order-notes" placeholder="Any special requirements..."></textarea></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    <button class="btn-primary" onclick="saveOrder()">Create Order</button>
+  </div>
+</div>
+
+<!-- Add Customer Modal -->
+<div class="modal hidden" id="modal-add-customer">
+  <div class="modal-header"><h2>Add New Customer</h2><button onclick="closeModal()">✕</button></div>
+  <div class="modal-body">
+    <div class="form-grid">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="cust-name" placeholder="Customer name"></div>
+      <div class="form-group"><label>Company</label><input type="text" id="cust-company" placeholder="Company name"></div>
+      <div class="form-group"><label>Email *</label><input type="email" id="cust-email" placeholder="email@example.com"></div>
+      <div class="form-group"><label>Phone</label><input type="text" id="cust-phone" placeholder="+1 234 567 8900"></div>
+      <div class="form-group"><label>Country *</label><input type="text" id="cust-country" placeholder="Country"></div>
+      <div class="form-group"><label>City</label><input type="text" id="cust-city" placeholder="City"></div>
+      <div class="form-group"><label>Customer Type</label>
+        <select id="cust-type"><option>International</option><option>Local</option><option>VIP</option><option>Wholesale</option></select></div>
+      <div class="form-group"><label>Payment Reliability</label>
+        <select id="cust-reliability"><option>Excellent</option><option>Good</option><option>Average</option><option>Poor</option></select></div>
+      <div class="form-group"><label>Credit Limit (USD)</label><input type="number" id="cust-credit" placeholder="0"></div>
+      <div class="form-group"><label>Preferred Currency</label>
+        <select id="cust-currency"><option>USD</option><option>EUR</option><option>EGP</option><option>GBP</option></select></div>
+    </div>
+    <div class="form-group full-width"><label>Address</label><textarea id="cust-address" placeholder="Full address..."></textarea></div>
+    <div class="form-group full-width"><label>Notes</label><textarea id="cust-notes" placeholder="Internal notes about customer..."></textarea></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    <button class="btn-primary" onclick="saveCustomer()">Save Customer</button>
+  </div>
+</div>
+
+<!-- Add Invoice Modal -->
+<div class="modal hidden" id="modal-add-invoice">
+  <div class="modal-header"><h2>Create Invoice</h2><button onclick="closeModal()">✕</button></div>
+  <div class="modal-body">
+    <div class="form-grid">
+      <div class="form-group"><label>Customer *</label>
+        <select id="inv-cust"><option>Ahmed Hassan</option><option>Marco Rossi</option><option>Sarah Williams</option><option>Liu Wei</option></select></div>
+      <div class="form-group"><label>Order Reference</label><input type="text" id="inv-ref" placeholder="ORD-2024-..."></div>
+      <div class="form-group"><label>Issue Date</label><input type="date" id="inv-date"></div>
+      <div class="form-group"><label>Due Date</label><input type="date" id="inv-due"></div>
+      <div class="form-group"><label>Amount (USD) *</label><input type="number" id="inv-amount" placeholder="0.00"></div>
+      <div class="form-group"><label>Currency</label>
+        <select id="inv-curr"><option>USD</option><option>EUR</option><option>EGP</option></select></div>
+      <div class="form-group"><label>Tax %</label><input type="number" id="inv-tax" placeholder="0" value="0"></div>
+      <div class="form-group"><label>Customs Fees</label><input type="number" id="inv-customs" placeholder="0.00"></div>
+      <div class="form-group"><label>Shipping Cost</label><input type="number" id="inv-ship-cost" placeholder="0.00"></div>
+      <div class="form-group"><label>Payment Method</label>
+        <select id="inv-pay-method"><option>Bank Transfer</option><option>Letter of Credit</option><option>PayPal</option><option>Check</option><option>Cash</option></select></div>
+    </div>
+    <div class="form-group full-width"><label>Notes</label><textarea id="inv-notes2" placeholder="Invoice notes..."></textarea></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    <button class="btn-secondary" onclick="previewInvoice()">Preview</button>
+    <button class="btn-primary" onclick="saveInvoice()">Create Invoice</button>
+  </div>
+</div>
+
+<!-- Add Employee Modal -->
+<div class="modal hidden" id="modal-add-employee">
+  <div class="modal-header"><h2>Add Employee</h2><button onclick="closeModal()">✕</button></div>
+  <div class="modal-body">
+    <div class="form-grid">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="emp-name" placeholder="Employee name"></div>
+      <div class="form-group"><label>Job Title *</label><input type="text" id="emp-title" placeholder="e.g. Sales Manager"></div>
+      <div class="form-group"><label>Department</label>
+        <select id="emp-dept"><option>Sales</option><option>Inventory</option><option>Finance</option><option>HR</option><option>Operations</option><option>Management</option></select></div>
+      <div class="form-group"><label>Email</label><input type="email" id="emp-email" placeholder="emp@marbleflow.com"></div>
+      <div class="form-group"><label>Phone</label><input type="text" id="emp-phone" placeholder="+20..."></div>
+      <div class="form-group"><label>Base Salary (EGP)</label><input type="number" id="emp-salary" placeholder="0"></div>
+      <div class="form-group"><label>Hire Date</label><input type="date" id="emp-hire"></div>
+      <div class="form-group"><label>Role/Permissions</label>
+        <select id="emp-role"><option>Employee</option><option>Department Manager</option><option>Admin</option></select></div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    <button class="btn-primary" onclick="saveEmployee()">Save Employee</button>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal hidden" id="modal-add-user">
+  <div class="modal-header"><h2>Add System User</h2><button onclick="closeModal()">✕</button></div>
+  <div class="modal-body">
+    <div class="form-grid">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="usr-name" placeholder="User name"></div>
+      <div class="form-group"><label>Email *</label><input type="email" id="usr-email" placeholder="user@marbleflow.com"></div>
+      <div class="form-group"><label>Password *</label><input type="password" id="usr-pass" placeholder="Secure password"></div>
+      <div class="form-group"><label>Role *</label>
+        <select id="usr-role"><option>Employee</option><option>Department Manager</option><option>Admin</option><option>Company Owner</option></select></div>
+      <div class="form-group"><label>Department</label>
+        <select id="usr-dept"><option>Sales</option><option>Inventory</option><option>Finance</option><option>HR</option><option>Management</option></select></div>
+      <div class="form-group"><label>Status</label>
+        <select id="usr-status"><option>Active</option><option>Inactive</option></select></div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    <button class="btn-primary" onclick="saveUser()">Create User</button>
+  </div>
+</div>
+
+<!-- Movement Modal -->
+<div class="modal hidden" id="modal-add-movement">
+  <div class="modal-header"><h2>Record Stock Movement</h2><button onclick="closeModal()">✕</button></div>
+  <div class="modal-body">
+    <div class="form-grid">
+      <div class="form-group"><label>Product *</label>
+        <select id="mov-product"><option>Carrara White Marble</option><option>Black Galaxy Granite</option><option>Emperador Brown</option></select></div>
+      <div class="form-group"><label>Movement Type</label>
+        <select id="mov-type"><option>Inbound (Received)</option><option>Outbound (Sold)</option><option>Transfer</option><option>Adjustment</option><option>Return</option></select></div>
+      <div class="form-group"><label>Quantity (m²) *</label><input type="number" id="mov-qty" placeholder="0"></div>
+      <div class="form-group"><label>From Location</label>
+        <select id="mov-from"><option>Supplier</option><option>Main Factory</option><option>Cairo Showroom</option><option>Alexandria Store</option></select></div>
+      <div class="form-group"><label>To Location</label>
+        <select id="mov-to"><option>Main Factory</option><option>Cairo Showroom</option><option>Alexandria Store</option><option>Customer</option></select></div>
+      <div class="form-group"><label>Reference #</label><input type="text" id="mov-ref" placeholder="Order/PO number"></div>
+    </div>
+    <div class="form-group full-width"><label>Notes</label><textarea id="mov-notes" placeholder="Movement notes..."></textarea></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    <button class="btn-primary" onclick="saveMovement()">Record Movement</button>
+  </div>
+</div>
+
+<!-- Toast Notifications -->
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
