@@ -32,6 +32,42 @@ const USERS_DB = [
   { email: 'emp@marbleflow.com', password: 'emp123', name: 'Omar Khalil', role: 'Employee', avatar: 'O', dept: 'Inventory' }
 ];
 
+// ===== RBAC =====
+const RBAC = {
+  'Company Owner': { modules: ['dashboard','inventory','sales','crm','accounting','analytics','hr','users','settings'], canDelete: true, canEditFinance: true, seeAllUsers: true, canApprove: true },
+  'Admin':         { modules: ['dashboard','inventory','sales','crm','accounting','analytics','hr','users','settings'], canDelete: true, canEditFinance: true, seeAllUsers: true, canApprove: true },
+  'Department Manager': { modules: ['dashboard','inventory','sales','crm','accounting','analytics','hr'], canDelete: false, canEditFinance: true, seeAllUsers: false, canApprove: true },
+  'Employee':      { modules: ['dashboard','inventory','sales'], canDelete: false, canEditFinance: false, seeAllUsers: false, canApprove: false }
+};
+
+function hasPermission(action) {
+  if (!APP.currentUser) return false;
+  const perms = RBAC[APP.currentUser.role];
+  return perms ? !!perms[action] : false;
+}
+
+function canAccessModule(mod) {
+  if (!APP.currentUser) return false;
+  const perms = RBAC[APP.currentUser.role];
+  return perms ? perms.modules.includes(mod) : false;
+}
+
+function applyRBAC() {
+  // Filter nav items
+  document.querySelectorAll('.nav-item[data-module]').forEach(item => {
+    const mod = item.getAttribute('data-module');
+    item.style.display = canAccessModule(mod) ? '' : 'none';
+  });
+  // Hide delete buttons for non-admins
+  if (!hasPermission('canDelete')) {
+    document.querySelectorAll('.btn-danger').forEach(btn => btn.style.display = 'none');
+  }
+  // HR salary: hide for non-admins
+  if (!hasPermission('canEditFinance')) {
+    document.querySelectorAll('[data-sensitive="salary"]').forEach(el => { el.textContent = '••••'; });
+  }
+}
+
 function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-password').value.trim();
@@ -45,6 +81,7 @@ function doLogin() {
   document.getElementById('user-avatar').textContent = user.avatar;
   document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   seedData();
+  applyRBAC();
   initDashboard();
   showToast('success', 'Welcome Back!', `Logged in as ${user.name}`);
   logAudit('Login', 'Auth', `User logged in from ${getRandomIP()}`);
@@ -188,6 +225,10 @@ function seedData() {
 
 // ===== MODULE NAVIGATION =====
 function showModule(name) {
+  if (!canAccessModule(name)) {
+    showToast('error', 'Access Denied', 'You do not have permission to access this module.');
+    return;
+  }
   document.querySelectorAll('.module').forEach(m => { m.classList.remove('active'); m.classList.add('hidden'); });
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
@@ -205,30 +246,30 @@ function showModule(name) {
 }
 
 function showTab(module, tab) {
-  // Find tab buttons in the current module
-  const modEl = document.getElementById('module-' + module);
+  // Resolve 'acc' alias to 'accounting' so HTML uses compact 'acc' shorthand
+  // while the actual module element is 'module-accounting'
+  const moduleAliases = { acc: 'accounting' };
+  const resolvedModule = moduleAliases[module] || module;
+
+  const modEl = document.getElementById('module-' + resolvedModule);
   if (!modEl) return;
   modEl.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   modEl.querySelectorAll('.tab-content').forEach(c => { c.classList.remove('active'); c.style.display = 'none'; });
 
-  const tabEl = document.getElementById(module === 'inventory' ? 'inv-' + tab : module === 'sales' ? 'sales-' + tab : module === 'crm' ? 'crm-' + tab : module === 'acc' ? 'acc-' + tab : module === 'hr' ? 'hr-' + tab : module === 'users' ? 'users-' + tab : '');
-
-  // Generic approach
-  let tabId = '';
+  // Tab ID map — 'acc' and 'accounting' both resolve to acc-* IDs
   const tabMap = {
-    inventory: { products: 'inv-products', warehouses: 'inv-warehouses', movements: 'inv-movements', batches: 'inv-batches' },
-    sales: { orders: 'sales-orders', shipments: 'sales-shipments', contracts: 'sales-contracts', pricing: 'sales-pricing' },
-    crm: { customers: 'crm-customers', leads: 'crm-leads', complaints: 'crm-complaints', loyalty: 'crm-loyalty' },
-    acc: { invoices: 'acc-invoices', payments: 'acc-payments', expenses: 'acc-expenses', reports: 'acc-reports' },
-    hr: { employees: 'hr-employees', attendance: 'hr-attendance', payroll: 'hr-payroll', leaves: 'hr-leaves' },
-    users: { list: 'users-list', roles: 'users-roles', audit: 'users-audit' }
+    inventory:  { products: 'inv-products', warehouses: 'inv-warehouses', movements: 'inv-movements', batches: 'inv-batches' },
+    sales:      { orders: 'sales-orders', shipments: 'sales-shipments', contracts: 'sales-contracts', pricing: 'sales-pricing' },
+    crm:        { customers: 'crm-customers', leads: 'crm-leads', complaints: 'crm-complaints', loyalty: 'crm-loyalty' },
+    accounting: { invoices: 'acc-invoices', payments: 'acc-payments', expenses: 'acc-expenses', reports: 'acc-reports' },
+    hr:         { employees: 'hr-employees', attendance: 'hr-attendance', payroll: 'hr-payroll', leaves: 'hr-leaves' },
+    users:      { list: 'users-list', roles: 'users-roles', audit: 'users-audit' }
   };
 
-  if (tabMap[module]) tabId = tabMap[module][tab] || '';
+  const tabId = (tabMap[resolvedModule] || {})[tab] || '';
   if (tabId) {
     const el = document.getElementById(tabId);
     if (el) { el.classList.add('active'); el.style.display = 'block'; }
-    // Find and activate corresponding btn
     modEl.querySelectorAll('.tab-btn').forEach(b => { if (b.getAttribute('data-tab') === tabId) b.classList.add('active'); });
   }
 }
@@ -391,8 +432,17 @@ function renderDashboardCharts() {
 }
 
 function updateRevenueChart(months) {
-  // Simplified re-render
-  renderDashboardCharts();
+  const allMonths = ['Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
+  const allRev   = [185000, 210000, 195000, 240000, 228000, 265000, 290000, 275000, 312000, 295000, 340000, 284500];
+  const n = parseInt(months) || 12;
+  const labels = allMonths.slice(-n);
+  const data   = allRev.slice(-n);
+  const chart = dashCharts.revenue;
+  if (chart) {
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = data;
+    chart.update();
+  }
 }
 
 // ===== ANALYTICS CHARTS =====
@@ -441,7 +491,7 @@ function renderAnalyticsCharts() {
   const vc = document.getElementById('velocity-chart');
   if (analCharts.velocity) analCharts.velocity.destroy();
   analCharts.velocity = new Chart(vc, {
-    type: 'horizontalBar',
+    type: 'bar',
     data: {
       labels: ['Carrara White', 'Abs. Black', 'Emperador', 'Black Galaxy', 'Rosso Verona', 'Green Onyx', 'Travertine', 'Crema Marfil'],
       datasets: [{ data: [95, 88, 82, 76, 65, 58, 42, 30], backgroundColor: '#c9a96e', borderRadius: 4 }]
@@ -766,6 +816,11 @@ function renderInvoices() {
   const tbody = document.getElementById('acc-inv-tbody');
   if (!tbody) return;
   const statMap = { Draft: 'badge-gray', Sent: 'badge-blue', Paid: 'badge-green', Overdue: 'badge-red' };
+  // Auto-detect overdue
+  const today = new Date().toISOString().split('T')[0];
+  APP.data.invoices.forEach(inv => {
+    if (inv.status !== 'Paid' && inv.due && inv.due < today) inv.status = 'Overdue';
+  });
   tbody.innerHTML = APP.data.invoices.map(inv => `
     <tr>
       <td><span style="font-family:'DM Mono',monospace;color:var(--gold)">${inv.id}</span></td>
@@ -776,9 +831,9 @@ function renderInvoices() {
       <td><span class="badge ${statMap[inv.status]}">${inv.status}</span></td>
       <td>${inv.method}</td>
       <td>
-        <button class="btn-icon" title="Print">⎙</button>
-        <button class="btn-icon" title="Mark Paid">✓</button>
-        <button class="btn-icon" title="Send Reminder">✉</button>
+        <button class="btn-icon" onclick="printInvoicePDF('${inv.id}')" title="Print PDF">⎙</button>
+        ${inv.status !== 'Paid' ? `<button class="btn-icon" onclick="markInvoicePaid('${inv.id}')" title="Mark as Paid">✓</button>` : ''}
+        ${inv.status === 'Overdue' || inv.status === 'Sent' ? `<button class="btn-icon" onclick="sendInvoiceReminder('${inv.id}')" title="Send Reminder">✉</button>` : ''}
       </td>
     </tr>`).join('');
 }
@@ -797,11 +852,20 @@ function renderExpenses() {
 function renderPaymentsSummary() {
   const el = document.getElementById('payments-summary');
   if (!el) return;
+  // Calculate real totals from invoice data
+  const today = new Date().toISOString().split('T')[0];
+  const parseAmt = s => parseFloat(String(s).replace(/[^0-9.]/g, '')) || 0;
+  const paid     = APP.data.invoices.filter(i => i.status === 'Paid').reduce((a, i) => a + parseAmt(i.amount), 0);
+  const overdue  = APP.data.invoices.filter(i => i.status === 'Overdue').reduce((a, i) => a + parseAmt(i.amount), 0);
+  const pending  = APP.data.invoices.filter(i => i.status === 'Sent' || i.status === 'Draft').reduce((a, i) => a + parseAmt(i.amount), 0);
+  const expenses = APP.data.expenses.reduce((a, e) => a + parseAmt(e.amount), 0);
   el.innerHTML = `
-    <div class="pay-kpi"><div class="pay-kpi-val" style="color:var(--emerald)">$186,200</div><div class="pay-kpi-lbl">Received This Month</div></div>
-    <div class="pay-kpi"><div class="pay-kpi-val" style="color:var(--ruby)">$24,660</div><div class="pay-kpi-lbl">Outstanding / Overdue</div></div>
-    <div class="pay-kpi"><div class="pay-kpi-val" style="color:var(--amber)">$47,100</div><div class="pay-kpi-lbl">Pending Payments</div></div>
-    <div class="pay-kpi"><div class="pay-kpi-val">$6,530</div><div class="pay-kpi-lbl">Total Expenses</div></div>
+    <div class="pay-kpi"><div class="pay-kpi-val" style="color:var(--emerald)">$${paid.toLocaleString('en-US',{minimumFractionDigits:2})}</div><div class="pay-kpi-lbl">Total Paid (USD)</div></div>
+    <div class="pay-kpi"><div class="pay-kpi-val" style="color:var(--ruby)">$${overdue.toLocaleString('en-US',{minimumFractionDigits:2})}</div><div class="pay-kpi-lbl">Overdue Amount</div></div>
+    <div class="pay-kpi"><div class="pay-kpi-val" style="color:var(--amber)">$${pending.toLocaleString('en-US',{minimumFractionDigits:2})}</div><div class="pay-kpi-lbl">Pending Payments</div></div>
+    <div class="pay-kpi"><div class="pay-kpi-val">$${expenses.toLocaleString('en-US',{minimumFractionDigits:2})}</div><div class="pay-kpi-lbl">Total Expenses</div></div>
+    <div class="pay-kpi"><div class="pay-kpi-val" style="color:var(--gold)">$${(paid - expenses).toLocaleString('en-US',{minimumFractionDigits:2})}</div><div class="pay-kpi-lbl">Net Profit (Est.)</div></div>
+    <div class="pay-kpi"><div class="pay-kpi-val">${APP.data.invoices.filter(i=>i.status==='Overdue').length}</div><div class="pay-kpi-lbl">Overdue Invoices</div></div>
   `;
 }
 
@@ -908,8 +972,10 @@ function renderLeaves() {
       <td style="font-family:'DM Mono',monospace">${l.days}</td>
       <td><span class="badge ${l.status==='Approved'?'badge-green':'badge-amber'}">${l.status}</span></td>
       <td>
-        <button class="btn-icon" title="Approve">✓</button>
-        <button class="btn-icon btn-danger" title="Reject">✕</button>
+        ${l.status === 'Pending' ? `
+          <button class="btn-icon" onclick="approveLeave('${l.emp}','${l.type}')" title="Approve">✓</button>
+          <button class="btn-icon btn-danger" onclick="rejectLeave('${l.emp}','${l.type}')" title="Reject">✕</button>
+        ` : '<span style="color:var(--text-muted);font-size:11px">—</span>'}
       </td>
     </tr>`).join('')}</tbody>
   </table></div>`;
@@ -962,7 +1028,11 @@ function renderRoles() {
 function renderAuditLog() {
   const tbody = document.getElementById('audit-tbody');
   if (!tbody) return;
-  tbody.innerHTML = APP.data.auditLog.map(a => `
+  // Non-admin users only see their own log entries
+  const logs = hasPermission('seeAllUsers')
+    ? APP.data.auditLog
+    : APP.data.auditLog.filter(a => a.user === APP.currentUser?.name);
+  tbody.innerHTML = logs.map(a => `
     <tr>
       <td><span style="font-family:'DM Mono',monospace;font-size:11px">${a.time}</span></td>
       <td>${a.user}</td>
@@ -992,30 +1062,75 @@ function renderWarehouseSettings() {
   if (!el) return;
   el.innerHTML = APP.data.warehouses.map(w => `
     <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;display:flex;justify-content:space-between;align-items:center">
-      <span>${w.name}</span>
+      <span>${w.name} <small style="color:var(--text-muted)">${w.location}</small></span>
       <div style="display:flex;gap:6px">
-        <button class="btn-icon" title="Edit">✎</button>
-        <button class="btn-icon btn-danger" title="Delete">✕</button>
+        <button class="btn-icon" onclick="showToast('info','Edit Warehouse','Editing ${w.name}')" title="Edit">✎</button>
+        <button class="btn-icon btn-danger" onclick="deleteWarehouse('${w.id}')" title="Delete">✕</button>
       </div>
     </div>`).join('');
 }
 
-// ===== MODALS =====
+function saveWarehouse() {
+  const name = document.getElementById('wh-name').value.trim();
+  if (!name) { showToast('error', 'Validation Error', 'Warehouse name is required.'); return; }
+  APP.data.warehouses.push({
+    id: nextId(APP.data.warehouses, 'W', 3),
+    name,
+    location: document.getElementById('wh-location').value,
+    capacity: parseInt(document.getElementById('wh-capacity').value) || 1000,
+    used: 0,
+    products: 0,
+    manager: document.getElementById('wh-manager').value
+  });
+  renderWarehouses();
+  renderWarehouseSettings();
+  closeModal();
+  showToast('success', 'Warehouse Added', `${name} has been added.`);
+  logAudit('Create', 'Settings', `Added warehouse: ${name}`);
+}
+
+function deleteWarehouse(id) {
+  if (!hasPermission('canDelete')) { showToast('error', 'Access Denied', 'You cannot delete warehouses.'); return; }
+  if (!confirm('Delete this warehouse?')) return;
+  APP.data.warehouses = APP.data.warehouses.filter(w => w.id !== id);
+  renderWarehouses();
+  renderWarehouseSettings();
+  showToast('warning', 'Warehouse Deleted', 'Warehouse has been removed.');
+  logAudit('Delete', 'Settings', `Deleted warehouse ${id}`);
+}
+
+function nextId(items, prefix, pad) {
+  const maxNum = items.reduce((max, item) => {
+    const n = parseInt(String(item.id).replace(/\D/g, ''), 10) || 0;
+    return Math.max(max, n);
+  }, 0);
+  return prefix + String(maxNum + 1).padStart(pad, '0');
+}
 function openModal(id) {
   document.getElementById('modal-overlay').classList.remove('hidden');
   document.getElementById('modal-' + id).classList.remove('hidden');
+  // Populate dynamic dropdowns
+  if (id === 'add-movement') {
+    const sel = document.getElementById('mov-product');
+    if (sel) sel.innerHTML = APP.data.products.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+  }
 }
 
 function closeModal() {
   document.getElementById('modal-overlay').classList.add('hidden');
   document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+  // Reset edit mode
+  if (editingProductId) {
+    editingProductId = null;
+    const h2 = document.querySelector('#modal-add-inventory .modal-header h2');
+    if (h2) h2.textContent = 'Add New Product';
+  }
 }
 
 function saveInventoryProduct() {
   const name = document.getElementById('inv-name').value.trim();
   if (!name) { showToast('error', 'Validation Error', 'Product name is required.'); return; }
-  const product = {
-    id: 'P' + String(APP.data.products.length + 1).padStart(3, '0'),
+  const productData = {
     name,
     type: document.getElementById('inv-type').value,
     color: document.getElementById('inv-color').value,
@@ -1030,11 +1145,26 @@ function saveInventoryProduct() {
     origin: document.getElementById('inv-origin').value,
     notes: document.getElementById('inv-notes').value
   };
-  APP.data.products.push(product);
+  if (editingProductId) {
+    const idx = APP.data.products.findIndex(x => x.id === editingProductId);
+    if (idx !== -1) {
+      APP.data.products[idx] = { ...APP.data.products[idx], ...productData };
+      showToast('success', 'Product Updated', `${name} has been updated.`);
+      logAudit('Update', 'Inventory', `Updated product: ${name}`);
+    }
+    editingProductId = null;
+    document.querySelector('#modal-add-inventory .modal-header h2').textContent = 'Add New Product';
+  } else {
+    const product = {
+      id: nextId(APP.data.products, 'P', 3),
+      ...productData
+    };
+    APP.data.products.push(product);
+    showToast('success', 'Product Added', `${name} has been added to inventory.`);
+    logAudit('Create', 'Inventory', `Added product: ${name}`);
+  }
   renderInventoryTable();
   closeModal();
-  showToast('success', 'Product Added', `${name} has been added to inventory.`);
-  logAudit('Create', 'Inventory', `Added product: ${name}`);
 }
 
 function saveOrder() {
@@ -1043,7 +1173,8 @@ function saveOrder() {
   const qty = document.getElementById('order-qty').value;
   if (!qty) { showToast('error', 'Validation Error', 'Quantity is required.'); return; }
   const total = document.getElementById('order-total').value;
-  const id = 'ORD-2024-' + (241 + APP.data.orders.length);
+  const maxOrdNum = APP.data.orders.reduce((max, o) => Math.max(max, parseInt(o.id.split('-').pop(), 10) || 0), 240);
+  const id = `ORD-${new Date().getFullYear()}-${maxOrdNum + 1}`;
   APP.data.orders.unshift({ id, customer, product, qty: parseInt(qty), total, status: 'Preparing', type: document.getElementById('order-type').value, date: new Date().toISOString().split('T')[0] });
   renderOrders();
   closeModal();
@@ -1055,7 +1186,7 @@ function saveCustomer() {
   const name = document.getElementById('cust-name').value.trim();
   if (!name) { showToast('error', 'Validation Error', 'Customer name is required.'); return; }
   APP.data.customers.push({
-    id: 'C' + String(APP.data.customers.length + 1).padStart(3, '0'),
+    id: nextId(APP.data.customers, 'C', 3),
     name,
     company: document.getElementById('cust-company').value,
     email: document.getElementById('cust-email').value,
@@ -1076,7 +1207,9 @@ function saveInvoice() {
   const customer = document.getElementById('inv-cust').value;
   const amount = document.getElementById('inv-amount').value;
   if (!amount) { showToast('error', 'Validation Error', 'Invoice amount is required.'); return; }
-  const id = 'INV-2024-' + String(89 + APP.data.invoices.length).padStart(3, '0');
+  const year = new Date().getFullYear();
+  const maxInvNum = APP.data.invoices.reduce((max, i) => Math.max(max, parseInt(i.id.split('-').pop(), 10) || 0), 88);
+  const id = `INV-${year}-${String(maxInvNum + 1).padStart(3, '0')}`;
   APP.data.invoices.unshift({
     id, customer,
     amount: '$' + parseFloat(amount).toLocaleString(),
@@ -1095,7 +1228,7 @@ function saveEmployee() {
   const name = document.getElementById('emp-name').value.trim();
   if (!name) { showToast('error', 'Validation Error', 'Employee name is required.'); return; }
   APP.data.employees.push({
-    id: 'E' + String(APP.data.employees.length + 1).padStart(3, '0'),
+    id: nextId(APP.data.employees, 'E', 3),
     name, title: document.getElementById('emp-title').value,
     dept: document.getElementById('emp-dept').value,
     email: document.getElementById('emp-email').value,
@@ -1116,7 +1249,7 @@ function saveUser() {
   const email = document.getElementById('usr-email').value.trim();
   if (!name || !email) { showToast('error', 'Validation Error', 'Name and email are required.'); return; }
   APP.data.users.push({
-    id: 'U' + String(APP.data.users.length + 1).padStart(3, '0'),
+    id: nextId(APP.data.users, 'U', 3),
     name, email,
     role: document.getElementById('usr-role').value,
     dept: document.getElementById('usr-dept').value,
@@ -1133,29 +1266,37 @@ function saveMovement() {
   const product = document.getElementById('mov-product').value;
   const qty = document.getElementById('mov-qty').value;
   if (!qty) { showToast('error', 'Validation Error', 'Quantity is required.'); return; }
+  const movTypeRaw = document.getElementById('mov-type').value;
+  const movType = movTypeRaw.split(' ')[0]; // e.g. 'Inbound'
   APP.data.movements.unshift({
     date: new Date().toISOString().split('T')[0],
-    product, type: document.getElementById('mov-type').value.split(' ')[0],
+    product, type: movType,
     qty: parseInt(qty),
     from: document.getElementById('mov-from').value,
     to: document.getElementById('mov-to').value,
     ref: document.getElementById('mov-ref').value || 'MANUAL',
     user: APP.currentUser?.name || 'Admin'
   });
+  // Update product stock level
+  const prod = APP.data.products.find(p => p.name === product);
+  if (prod) {
+    if (movType === 'Inbound' || movType === 'Return') {
+      prod.stock += parseInt(qty);
+    } else if (movType === 'Outbound') {
+      prod.stock = Math.max(0, prod.stock - parseInt(qty));
+    }
+    renderInventoryTable();
+  }
   renderMovements();
   closeModal();
   showToast('success', 'Movement Recorded', `Stock movement logged for ${product}.`);
-  logAudit('Create', 'Inventory', `Stock movement: ${qty}m² ${product}`);
+  logAudit('Create', 'Inventory', `Stock movement: ${qty}m² ${movType} — ${product}`);
 }
 
 function calcOrderTotal() {
   const qty = parseFloat(document.getElementById('order-qty').value) || 0;
   const price = parseFloat(document.getElementById('order-price').value) || 0;
   document.getElementById('order-total').value = '$' + (qty * price).toLocaleString('en-US', { minimumFractionDigits: 2 });
-}
-
-function previewInvoice() {
-  showToast('info', 'Preview Mode', 'Invoice preview would open in a new tab with PDF format.');
 }
 
 // ===== FILTER/SEARCH =====
@@ -1183,21 +1324,63 @@ function filterByCol(tableId, colIndex, value) {
 }
 
 function filterMovements() {
-  showToast('info', 'Filter Applied', 'Date range filter applied to movements.');
+  const from = document.getElementById('mov-date-from')?.value;
+  const to = document.getElementById('mov-date-to')?.value;
+  const tbody = document.getElementById('mov-tbody');
+  if (!tbody) return;
+  let filtered = APP.data.movements;
+  if (from) filtered = filtered.filter(m => m.date >= from);
+  if (to)   filtered = filtered.filter(m => m.date <= to);
+  tbody.innerHTML = filtered.map(m => `
+    <tr>
+      <td><span style="font-family:'DM Mono',monospace">${m.date}</span></td>
+      <td>${m.product}</td>
+      <td><span class="badge ${m.type==='Inbound'?'badge-green':m.type==='Outbound'?'badge-red':m.type==='Transfer'?'badge-blue':'badge-amber'}">${m.type}</span></td>
+      <td><strong style="font-family:'DM Mono',monospace">${m.qty}</strong></td>
+      <td>${m.from}</td>
+      <td>${m.to}</td>
+      <td><span style="font-family:'DM Mono',monospace;color:var(--gold)">${m.ref}</span></td>
+      <td>${m.user}</td>
+    </tr>`).join('');
+  showToast('success', 'Filter Applied', `Showing ${filtered.length} movement${filtered.length !== 1 ? 's' : ''}.`);
 }
 
 // ===== GLOBAL SEARCH =====
 function globalSearch(q) {
-  if (!q || q.length < 2) return;
-  // Simple client-side search feedback
+  const panel = document.getElementById('search-results');
+  if (!q || q.length < 2) { if (panel) panel.style.display = 'none'; return; }
   const results = [];
-  APP.data.products.forEach(p => { if (p.name.toLowerCase().includes(q.toLowerCase())) results.push({ type: 'Product', name: p.name, link: 'inventory' }); });
-  APP.data.customers.forEach(c => { if (c.name.toLowerCase().includes(q.toLowerCase())) results.push({ type: 'Customer', name: c.name, link: 'crm' }); });
-  APP.data.orders.forEach(o => { if (o.id.toLowerCase().includes(q.toLowerCase()) || o.customer.toLowerCase().includes(q.toLowerCase())) results.push({ type: 'Order', name: o.id, link: 'sales' }); });
-  if (results.length > 0) {
-    console.log('Search results:', results);
+  APP.data.products.forEach(p => { if (p.name.toLowerCase().includes(q.toLowerCase())) results.push({ type: 'Product', name: p.name, sub: p.type + ' · ' + p.warehouse, link: 'inventory' }); });
+  APP.data.customers.forEach(c => { if (c.name.toLowerCase().includes(q.toLowerCase()) || c.company.toLowerCase().includes(q.toLowerCase())) results.push({ type: 'Customer', name: c.name, sub: c.company + ' · ' + c.country, link: 'crm' }); });
+  APP.data.orders.forEach(o => { if (o.id.toLowerCase().includes(q.toLowerCase()) || o.customer.toLowerCase().includes(q.toLowerCase())) results.push({ type: 'Order', name: o.id, sub: o.customer + ' · ' + o.total, link: 'sales' }); });
+  APP.data.invoices.forEach(i => { if (i.id.toLowerCase().includes(q.toLowerCase())) results.push({ type: 'Invoice', name: i.id, sub: i.customer + ' · ' + i.amount, link: 'accounting' }); });
+
+  if (!panel) {
+    const p = document.createElement('div');
+    p.id = 'search-results';
+    p.className = 'search-results-panel';
+    document.querySelector('.search-bar').appendChild(p);
+  }
+  const rPanel = document.getElementById('search-results');
+  if (results.length === 0) {
+    rPanel.innerHTML = '<div class="search-result-item" style="color:var(--text-muted);font-style:italic">No results found</div>';
+  } else {
+    rPanel.innerHTML = results.slice(0, 8).map(r => `
+      <div class="search-result-item" onclick="showModule('${r.link}');this.parentElement.style.display='none'">
+        <span class="badge badge-blue" style="font-size:10px;margin-right:6px">${r.type}</span>
+        <strong>${r.name}</strong>
+        <span style="color:var(--text-muted);margin-left:6px;font-size:11px">${r.sub}</span>
+      </div>`).join('');
+  }
+  rPanel.style.display = 'block';
+}
+function closeSearchPanel(e) {
+  if (!e.target.closest('.search-bar')) {
+    const p = document.getElementById('search-results');
+    if (p) p.style.display = 'none';
   }
 }
+document.addEventListener('click', closeSearchPanel);
 
 // ===== SIDEBAR =====
 function toggleSidebar() {
@@ -1212,12 +1395,89 @@ function toggleNotif() {
   document.getElementById('notif-panel').classList.toggle('hidden');
 }
 
-// ===== LANGUAGE =====
+// ===== LANGUAGE / I18N =====
+const TRANSLATIONS = {
+  en: {
+    'Dashboard': 'Dashboard', 'Inventory Management': 'Inventory Management',
+    'Sales & Export': 'Sales & Export', 'CRM & Customers': 'CRM & Customers',
+    'Accounting': 'Accounting', 'Analytics': 'Analytics',
+    'Human Resources': 'Human Resources', 'Users & Access': 'Users & Access',
+    'Settings': 'Settings', 'Sign Out': 'Sign Out',
+    'Executive Dashboard': 'Executive Dashboard', 'Total Stock (m²)': 'Total Stock (m²)',
+    'Active Orders': 'Active Orders', 'Monthly Revenue': 'Monthly Revenue',
+    'Active Alerts': 'Active Alerts', 'Total Customers': 'Total Customers',
+    'Active Shipments': 'Active Shipments', 'Export Report': 'Export Report',
+    'Search clients, orders, products...': 'Search clients, orders, products...',
+    '+ Add Product': '+ Add Product', 'Stock Movements': 'Stock Movements',
+    'Products': 'Products', 'Warehouses': 'Warehouses',
+    'Movements': 'Movements', 'Batches & QR': 'Batches & QR',
+    '+ New Order': '+ New Order', 'Orders': 'Orders', 'Shipments': 'Shipments',
+    'Contracts': 'Contracts', 'Pricing Rules': 'Pricing Rules',
+    '+ Add Customer': '+ Add Customer', 'Customers': 'Customers',
+    'Leads': 'Leads', 'Complaints': 'Complaints', 'Loyalty Program': 'Loyalty Program',
+    'Financial Reports': 'Financial Reports', '+ New Invoice': '+ New Invoice',
+    'Invoices': 'Invoices', 'Payments': 'Payments', 'Expenses': 'Expenses', 'Reports': 'Reports',
+    'Export PDF': 'Export PDF', 'Export Excel': 'Export Excel',
+    '+ Add Employee': '+ Add Employee', 'Employees': 'Employees',
+    'Attendance': 'Attendance', 'Payroll': 'Payroll', 'Leaves': 'Leaves',
+    'Audit Log': 'Audit Log', '+ Add User': '+ Add User', 'Roles & Permissions': 'Roles & Permissions',
+    'System Settings': 'System Settings', 'Welcome Back': 'Welcome Back',
+    'Sign in to your export management system': 'Sign in to your export management system',
+    'Email Address': 'Email Address', 'Password': 'Password', 'Sign In': 'Sign In',
+  },
+  ar: {
+    'Dashboard': 'لوحة التحكم', 'Inventory Management': 'إدارة المخزون',
+    'Sales & Export': 'المبيعات والتصدير', 'CRM & Customers': 'إدارة العملاء',
+    'Accounting': 'المحاسبة', 'Analytics': 'التحليلات',
+    'Human Resources': 'الموارد البشرية', 'Users & Access': 'المستخدمون والصلاحيات',
+    'Settings': 'الإعدادات', 'Sign Out': 'تسجيل الخروج',
+    'Executive Dashboard': 'لوحة التحكم التنفيذية', 'Total Stock (m²)': 'إجمالي المخزون (م²)',
+    'Active Orders': 'الطلبات النشطة', 'Monthly Revenue': 'الإيرادات الشهرية',
+    'Active Alerts': 'التنبيهات النشطة', 'Total Customers': 'إجمالي العملاء',
+    'Active Shipments': 'الشحنات النشطة', 'Export Report': 'تصدير التقرير',
+    'Search clients, orders, products...': 'بحث عن عملاء، طلبات، منتجات...',
+    '+ Add Product': '+ إضافة منتج', 'Stock Movements': 'حركة المخزون',
+    'Products': 'المنتجات', 'Warehouses': 'المستودعات',
+    'Movements': 'الحركات', 'Batches & QR': 'الدفعات ورمز QR',
+    '+ New Order': '+ طلب جديد', 'Orders': 'الطلبات', 'Shipments': 'الشحنات',
+    'Contracts': 'العقود', 'Pricing Rules': 'قواعد التسعير',
+    '+ Add Customer': '+ إضافة عميل', 'Customers': 'العملاء',
+    'Leads': 'العملاء المحتملون', 'Complaints': 'الشكاوى', 'Loyalty Program': 'برنامج الولاء',
+    'Financial Reports': 'التقارير المالية', '+ New Invoice': '+ فاتورة جديدة',
+    'Invoices': 'الفواتير', 'Payments': 'المدفوعات', 'Expenses': 'المصروفات', 'Reports': 'التقارير',
+    'Export PDF': 'تصدير PDF', 'Export Excel': 'تصدير Excel',
+    '+ Add Employee': '+ إضافة موظف', 'Employees': 'الموظفون',
+    'Attendance': 'الحضور', 'Payroll': 'كشف الرواتب', 'Leaves': 'الإجازات',
+    'Audit Log': 'سجل التدقيق', '+ Add User': '+ إضافة مستخدم', 'Roles & Permissions': 'الأدوار والصلاحيات',
+    'System Settings': 'إعدادات النظام', 'Welcome Back': 'مرحباً بعودتك',
+    'Sign in to your export management system': 'تسجيل الدخول إلى نظام إدارة التصدير',
+    'Email Address': 'البريد الإلكتروني', 'Password': 'كلمة المرور', 'Sign In': 'تسجيل الدخول',
+  }
+};
+
+function t(key) {
+  return (TRANSLATIONS[APP.currentLang] || {})[key] || key;
+}
+
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+      el.placeholder = t(key);
+    } else {
+      el.textContent = t(key);
+    }
+  });
+}
+
 function toggleLang() {
   APP.currentLang = APP.currentLang === 'en' ? 'ar' : 'en';
-  document.getElementById('lang-label').textContent = APP.currentLang.toUpperCase();
-  document.documentElement.dir = APP.currentLang === 'ar' ? 'rtl' : 'ltr';
-  showToast('info', 'Language', APP.currentLang === 'ar' ? 'تم التبديل إلى العربية' : 'Switched to English');
+  const isAr = APP.currentLang === 'ar';
+  document.getElementById('lang-label').textContent = isAr ? 'AR' : 'EN';
+  document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+  document.documentElement.lang = APP.currentLang;
+  applyTranslations();
+  showToast('info', isAr ? 'اللغة' : 'Language', isAr ? 'تم التبديل إلى العربية' : 'Switched to English');
 }
 
 // ===== TOAST =====
@@ -1250,31 +1510,118 @@ function getRandomIP() {
 }
 
 // ===== ACTIONS =====
+let editingProductId = null;
+
 function editProduct(id) {
   const p = APP.data.products.find(x => x.id === id);
   if (!p) return;
-  showToast('info', 'Edit Product', `Editing ${p.name} — form would pre-fill with existing data.`);
+  editingProductId = id;
+  document.getElementById('inv-name').value = p.name;
+  document.getElementById('inv-type').value = p.type;
+  document.getElementById('inv-color').value = p.color;
+  document.getElementById('inv-size').value = p.size;
+  document.getElementById('inv-quality').value = p.quality;
+  document.getElementById('inv-supplier').value = p.supplier;
+  document.getElementById('inv-price').value = p.price;
+  document.getElementById('inv-stock').value = p.stock;
+  document.getElementById('inv-warehouse').value = p.warehouse;
+  document.getElementById('inv-usage').value = p.usage;
+  document.getElementById('inv-min').value = p.minStock;
+  document.getElementById('inv-origin').value = p.origin;
+  document.getElementById('inv-notes').value = p.notes || '';
+  document.querySelector('#modal-add-inventory .modal-header h2').textContent = 'Edit Product';
+  openModal('add-inventory');
 }
 
+// ===== ACTIONS =====
 function deleteProduct(id) {
+  if (!hasPermission('canDelete')) { showToast('error', 'Access Denied', 'You do not have permission to delete products.'); return; }
   const p = APP.data.products.find(x => x.id === id);
   if (!p) return;
-  if (!confirm(`Delete ${p.name}?`)) return;
+  if (!confirm(`Delete ${p.name}? This action cannot be undone.`)) return;
   APP.data.products = APP.data.products.filter(x => x.id !== id);
   renderInventoryTable();
   showToast('warning', 'Product Deleted', `${p.name} has been removed from inventory.`);
   logAudit('Delete', 'Inventory', `Deleted product: ${p.name}`);
 }
 
-function viewBatch(id) { showToast('info', 'Batch History', `Full batch history for product ${id} would open here.`); }
-function viewOrder(id) { showToast('info', 'Order Details', `Full details for ${id} would open here.`); }
-function viewCustomer(id) { showToast('info', 'Customer Profile', `Full profile for customer ${id} would open here.`); }
-function updateOrderStatus(id) { showToast('info', 'Update Status', `Status update dialog for ${id} would open here.`); }
+function viewBatch(id) {
+  const p = APP.data.products.find(x => x.id === id);
+  const batches = APP.data.batches.filter(b => b.product === p?.name);
+  if (batches.length === 0) { showToast('info', 'No Batches', `No batch records found for ${p?.name || id}.`); return; }
+  const detail = batches.map(b => `<strong>${b.id}</strong>: ${b.qty} m² — ${b.quality} — ${b.origin} — ${b.date}`).join('\n');
+  alert(`Batch History for ${p?.name}:\n\n${detail}`);
+}
 
-function exportReport() { showToast('info', 'Export', 'Dashboard report is being exported to PDF...'); }
+function viewOrder(id) {
+  const o = APP.data.orders.find(x => x.id === id);
+  if (!o) return;
+  alert(`Order Details\n\nID: ${o.id}\nCustomer: ${o.customer}\nProduct: ${o.product}\nQuantity: ${o.qty} m²\nTotal: ${o.total}\nStatus: ${o.status}\nType: ${o.type}\nDate: ${o.date}`);
+}
+
+function viewCustomer(id) {
+  const c = APP.data.customers.find(x => x.id === id);
+  if (!c) return;
+  alert(`Customer Profile\n\n${c.name}\n${c.company}\nCountry: ${c.country}\nEmail: ${c.email}\nPhone: ${c.phone}\nType: ${c.type}\nOrders: ${c.orders}\nTotal Value: ${c.totalValue}\nLoyalty Points: ${c.points} (${c.tier})`);
+}
+
+function updateOrderStatus(id) {
+  if (!hasPermission('canApprove')) { showToast('error', 'Access Denied', 'You do not have permission to update order status.'); return; }
+  const order = APP.data.orders.find(o => o.id === id);
+  if (!order) return;
+  const statuses = ['Preparing', 'Shipped', 'Delivered', 'Paid'];
+  const idx = statuses.indexOf(order.status);
+  if (idx === statuses.length - 1) { showToast('info', 'No Change', `Order ${id} is already at final status: ${order.status}`); return; }
+  const nextStatus = statuses[idx + 1];
+  if (confirm(`Update ${id} from "${order.status}" → "${nextStatus}"?`)) {
+    order.status = nextStatus;
+    renderOrders();
+    showToast('success', 'Status Updated', `${id} is now "${nextStatus}"`);
+    logAudit('Update', 'Sales', `Order ${id} status → ${nextStatus}`);
+  }
+}
+
+function markInvoicePaid(id) {
+  if (!hasPermission('canEditFinance')) {
+    showToast('error', 'Access Denied', 'You do not have permission to mark invoices as paid.'); return;
+  }
+  const inv = APP.data.invoices.find(i => i.id === id);
+  if (!inv) return;
+  inv.status = 'Paid';
+  renderInvoices();
+  renderPaymentsSummary();
+  showToast('success', 'Invoice Paid', `${id} has been marked as paid.`);
+  logAudit('Update', 'Accounting', `Invoice ${id} marked as paid`);
+}
+
+function sendInvoiceReminder(id) {
+  const inv = APP.data.invoices.find(i => i.id === id);
+  if (!inv) return;
+  showToast('info', 'Reminder Sent', `Payment reminder sent to ${inv.customer} for ${inv.amount}.`);
+  logAudit('Send', 'Accounting', `Payment reminder sent for invoice ${id} to ${inv.customer}`);
+}
+
+function printInvoicePDF(id) {
+  showToast('info', 'Generating PDF', `Invoice ${id} is being prepared as a PDF…`);
+}
+
+function approveLeave(empName, leaveType) {
+  if (!hasPermission('canApprove')) { showToast('error', 'Access Denied', 'You do not have permission to approve leave.'); return; }
+  showToast('success', 'Leave Approved', `${leaveType} for ${empName} has been approved.`);
+  logAudit('Update', 'HR', `Leave approved for ${empName}`);
+}
+
+function rejectLeave(empName, leaveType) {
+  if (!hasPermission('canApprove')) { showToast('error', 'Access Denied', 'You do not have permission to reject leave.'); return; }
+  showToast('warning', 'Leave Rejected', `${leaveType} for ${empName} has been rejected.`);
+  logAudit('Update', 'HR', `Leave rejected for ${empName}`);
+}
+
+function exportReport() { showToast('info', 'Export', 'Dashboard report is being exported to PDF...'); logAudit('Export', 'Dashboard', 'Exported dashboard report'); }
 function refreshAnalytics() { renderAnalyticsCharts(); showToast('success', 'Analytics', 'Analytics data refreshed.'); }
-function exportPDF() { showToast('info', 'Export PDF', 'Analytics report is being generated as PDF...'); }
-function exportExcel() { showToast('info', 'Export Excel', 'Analytics data is being exported to Excel...'); }
+function exportPDF() { showToast('info', 'Export PDF', 'Analytics report is being generated as PDF...'); logAudit('Export', 'Analytics', 'Exported analytics PDF'); }
+function exportExcel() { showToast('info', 'Export Excel', 'Analytics data is being exported to Excel...'); logAudit('Export', 'Analytics', 'Exported analytics Excel'); }
+function previewInvoice() { showToast('info', 'Preview', 'Invoice preview opened in print view.'); window.print(); }
 
 // ===== KEYBOARD SHORTCUT =====
 document.addEventListener('keydown', (e) => {
